@@ -1,0 +1,5 @@
+data/*
+processed/*
+rawdata/*
+.vscode/*
+__pycache__/*
