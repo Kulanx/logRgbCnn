@@ -6,6 +6,11 @@ import torch.nn as nn
 from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 import os
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> 8ed5e374c45585a939e8bd12b1e4a9b2e0150792
 import cv2
 
 def load_images_from_folder(folder):
@@ -21,21 +26,9 @@ os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+>>>>>>> Add provided code.
 
 batch_size = 4
-# trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-#                                         download=True, transform=transform)
-# trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-#                                           shuffle=True, num_workers=0)
-
-# testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-#                                        download=True, transform=transform)
-# testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
-#                                          shuffle=False, num_workers=0)
-
-# classes = ('plane', 'car', 'bird', 'cat',
-#            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
 
 # Define the dataset and transformations
 transform = transforms.Compose([
@@ -43,12 +36,22 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+dataset = datasets.ImageFolder(root='processed/linear', transform=transform)
+=======
+>>>>>>> 8ed5e374c45585a939e8bd12b1e4a9b2e0150792
 image_root = '/Users/kulanx/Git/CV_Object_Recognition/lin/test_set';
 # cats = load_images_from_folder(image_root + '/cat')
 # dogs = load_images_from_folder(image_root + '/dog')
 # image_dict = {'cat': cats, 'dog': dogs}
 # dataset = torch.Tensor(image_dict)
 dataset = datasets.ImageFolder(root=image_root, transform=transform)
+<<<<<<< HEAD
+=======
+>>>>>>> Add provided code.
+>>>>>>> 8ed5e374c45585a939e8bd12b1e4a9b2e0150792
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Calculate the size of the training and testing sets
@@ -62,6 +65,7 @@ train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 # Create DataLoader for training and testing
 batch_size = 32
 print_size = 10
+num_epochs = 25
 
 train_dataloader = DataLoader(
     train_dataset, batch_size=batch_size, shuffle=True)
@@ -99,8 +103,22 @@ def test():
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
+<<<<<<< HEAD
 for epoch in range(2):  # loop over the dataset multiple times
     bad_count=0
+=======
+<<<<<<< HEAD
+
+loss_lst = []
+accuracy_lst = []
+
+for epoch in range(num_epochs):  # loop over the dataset multiple times
+
+=======
+for epoch in range(2):  # loop over the dataset multiple times
+    bad_count=0
+>>>>>>> Add provided code.
+>>>>>>> 8ed5e374c45585a939e8bd12b1e4a9b2e0150792
     running_loss = 0.0
     for i, data in enumerate(train_dataloader, 0):
         try:
@@ -127,5 +145,31 @@ for epoch in range(2):  # loop over the dataset multiple times
 
     test()
 
+<<<<<<< HEAD
+=======
+
+    net.eval()  # Set the model to evaluation mode
+    with torch.no_grad():
+        total_correct = 0
+        total_samples = 0
+        for inputs, labels in test_dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            outputs = net(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total_samples += labels.size(0)
+            total_correct += (predicted == labels).sum().item()
+
+        accuracy = total_correct / total_samples
+        loss_lst.append(loss.item())
+        accuracy_lst.append(accuracy)
+        print(
+            f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}, Accuracy: {accuracy * 100:.2f}%')
+>>>>>>> 8ed5e374c45585a939e8bd12b1e4a9b2e0150792
 
 print('Finished Training')
+result = 'losses:\n' + str(loss_lst) + '\naccuracies:\n' + str(accuracy_lst)
+print(result)
+result_path = os.path.join('results', 'result2.txt')
+with open(result_path, "w") as output:
+    output.write(result)
