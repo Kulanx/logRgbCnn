@@ -4,9 +4,12 @@ import torch.optim as optim
 import CatOrDogNet
 import torch.nn as nn
 from torchvision import datasets, transforms, models
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 import os
+from dataset_definitions.fish_linear_image_dataset import FishLinearImageDataset  
+from dataset_definitions.fish_color_and_intensity_dataset import FishColorAndIntensityDataset  
 
+os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
 
 def load_images_from_folder(folder):
@@ -16,8 +19,6 @@ def load_images_from_folder(folder):
         if img is not None:
             images.append(img)
     return images
-
-os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 
 transform = transforms.Compose(
     [transforms.ToTensor(),
@@ -31,12 +32,8 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-image_root = '/Users/kulanx/Git/CV_Object_Recognition/lin/test_set';
-# cats = load_images_from_folder(image_root + '/cat')
-# dogs = load_images_from_folder(image_root + '/dog')
-# image_dict = {'cat': cats, 'dog': dogs}
-# dataset = torch.Tensor(image_dict)
-dataset = datasets.ImageFolder(root=image_root, transform=transform)
+image_root = os.path.join('processed', 'pseudolinear_small')
+dataset = FishLinearImageDataset(root_dir=image_root)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -53,21 +50,21 @@ batch_size = 32
 print_size = 10
 num_epochs = 25
 
-train_dataloader = DataLoader(
-    train_dataset, batch_size=batch_size, shuffle=True)
-test_dataloader = DataLoader(
-    test_dataset, batch_size=batch_size, shuffle=False)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-net = models.resnet18(weights='weights=ResNet18_Weights.DEFAULT')
+# change model here
+net = models.resnet18(pretrained=True)
+# net = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
+
 # net = CatOrDogNet.CatOrDogNet()
 if torch.cuda.is_available():
     net.cuda()
 
-n_epochs=10
 train_losses = []
 train_counter = []
 test_losses = []
-test_counter = [i*len(train_dataloader.dataset) for i in range(n_epochs + 1)]
+test_counter = [i*len(train_dataloader.dataset) for i in range(num_epochs + 1)]
 
 def test():
     net.eval()
@@ -93,33 +90,28 @@ optimizer = optim.Adam(net.parameters(), lr=0.001)
 loss_lst = []
 accuracy_lst = []
 
-for epoch in range(2):  # loop over the dataset multiple times
-    bad_count=0
+for epoch in range(num_epochs):  # loop over the dataset multiple times
+
     running_loss = 0.0
     for i, data in enumerate(train_dataloader, 0):
-        try:
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data
+        inputs, labels = inputs.to(device), labels.to(device)
 
-            # zero the parameter gradients
-            optimizer.zero_grad()
+        # zero the parameter gradients
+        optimizer.zero_grad()
 
-            # forward + backward + optimize
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+        # forward + backward + optimize
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
 
-            # print statistics
-            running_loss += loss.item()
-            if i % print_size == print_size - 1:    # print every 2000 mini-batches
-                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / print_size:.3f}')
-                running_loss = 0.0
-        except:
-            bad_count += 1
-
-    test()
+        # print statistics
+        running_loss += loss.item()
+        if i % print_size == print_size - 1:    # print every 2000 mini-batches
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / print_size:.3f}')
+            running_loss = 0.0
 
     net.eval()  # Set the model to evaluation mode
     with torch.no_grad():

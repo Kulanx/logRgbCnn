@@ -1,10 +1,10 @@
 import os
-import cv2
 import torch
 import pandas as pd
 from torch.utils.data import Dataset
 import numpy as np
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1" # Required to read exr images
+import cv2
 
 
 class CatDogLogImageSubDataset(Dataset):
@@ -28,7 +28,7 @@ class CatDogLogImageSubDataset(Dataset):
         """
         self.root_dir = root_dir
         self.df = self._build_dataset_df()
-        self.class_map = {'cats' : 0, 'dogs' : 1}
+        self.class_map = {'cat' : 0, 'dog' : 1}
         self.custom_transforms = custom_transforms
 
     def __len__(self):

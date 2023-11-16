@@ -18,7 +18,7 @@ def tiff_to_log(sixteen_bit_image):
     return sixteen_bit_image
 
 def save_log(log_image, fpath):
-    imageio.imsave(fpath, log_image)
+    imageio.imsave(fpath, log_image, format='exr')
 
 def srgb_to_xyz(srgb_img, max_val=1):
   # Max val is an optional parameter to scale the image to [0, 1].

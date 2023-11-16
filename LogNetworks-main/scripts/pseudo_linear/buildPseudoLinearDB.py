@@ -34,6 +34,7 @@ from tqdm import tqdm
 
 PSEUDOLINEAR = 'pseudolinear'
 PSEUDOLOG = 'pseudolog'
+failed = []
 
 def main(argv):
   if len(argv) < 3:
@@ -61,15 +62,20 @@ def main(argv):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     img = load_img(img_path)
-    img = srgb_to_xyz(img, max_val=255)
-    img = float_to_tiff(img)
-    img = bgr_to_rgb(img)
-    fname, _ = fname.split('.')
-    tiffname = f'{fname}.tiff'
-    exrname = f'{fname}.exr'
-    save_tiff(img, os.path.join(linear_dir, tiffname))
-    img = tiff_to_log(img)
-    save_log(img, os.path.join(log_dir, exrname))
+    if img is not None:
+      img = srgb_to_xyz(img, max_val=255)
+      img = float_to_tiff(img)
+      img = bgr_to_rgb(img)
+      fname, _ = fname.split('.')
+      tiffname = f'{fname}.tiff'
+      exrname = f'{fname}.exr'
+      save_tiff(img, os.path.join(linear_dir, tiffname))
+      img = tiff_to_log(img)
+      save_log(img, os.path.join(log_dir, exrname))
+    else:
+      failed.append(img_path)
+  print('failed images:')
+  print(failed)
 
 if __name__ == "__main__":
     main(sys.argv)

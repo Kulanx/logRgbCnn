@@ -14,9 +14,9 @@ def display_img_from_path(img_path, window_name='image'):
 
 def load_img(img_path):
     img = cv2.imread(img_path)
-    if img is not None:
-        return img
-    raise Exception(f'Failed to read {img_path}')
+    if img is None:
+        print('failed: ', img_path)
+    return img
 
 def display_img(img, window_name='image'):
     if img is not None:
