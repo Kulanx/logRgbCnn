@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 from torch.utils.data import Dataset
 from torchvision import transforms
+import numpy as np
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1" # Required to read exr images
 import cv2
 
@@ -42,9 +43,12 @@ class FishLogImageDataset(Dataset):
                                 self.df.iloc[idx, 1])
         image = cv2.imread(img_path, cv2.IMREAD_UNCHANGED) # Flag is important.
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = cv2.resize(image, dsize=(224, 224), interpolation=cv2.INTER_CUBIC)
+        image=image.astype('float') # Pytorch is not compatible with uint16.
+        image = cv2.resize(image, dsize=(224, 224), interpolation=cv2.INTER_AREA)
 
         label = self.df.iloc[idx, 0]
+
+        image[image != 0] = np.log(image[image != 0])
 
         if self.custom_transforms:
           for transform in self.custom_transforms:

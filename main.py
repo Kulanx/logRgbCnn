@@ -6,8 +6,9 @@ import torch.nn as nn
 from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader, Dataset
 import os
+from dataset_definitions.fish_log_image_dataset import FishLogImageDataset  
 from dataset_definitions.fish_linear_image_dataset import FishLinearImageDataset  
-from dataset_definitions.fish_color_and_intensity_dataset import FishColorAndIntensityDataset  
+from dataset_definitions.fish_jpg_image_dataset import FishJPGImageDataset
 
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
@@ -24,16 +25,14 @@ transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-batch_size = 4
-
 # Define the dataset and transformations
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
 
-image_root = os.path.join('processed', 'pseudolinear_small')
-dataset = FishLinearImageDataset(root_dir=image_root)
+image_root = os.path.join('processed', 'pseudolog')
+dataset = FishLogImageDataset(root_dir=image_root)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -54,7 +53,7 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # change model here
-net = models.resnet18(pretrained=True)
+net = models.densenet121(pretrained=True)
 # net = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
 
 # net = CatOrDogNet.CatOrDogNet()
@@ -91,12 +90,12 @@ loss_lst = []
 accuracy_lst = []
 
 for epoch in range(num_epochs):  # loop over the dataset multiple times
-
+    net.train()
     running_loss = 0.0
     for i, data in enumerate(train_dataloader, 0):
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data
-        inputs, labels = inputs.to(device), labels.to(device)
+        inputs, labels = inputs.to(device=device, dtype=torch.float), labels.to(device)
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -118,7 +117,7 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         total_correct = 0
         total_samples = 0
         for inputs, labels in test_dataloader:
-            inputs, labels = inputs.to(device), labels.to(device)
+            inputs, labels = inputs.to(device=device, dtype=torch.float), labels.to(device)
 
             outputs = net(inputs)
             _, predicted = torch.max(outputs, 1)
@@ -134,6 +133,6 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 print('Finished Training')
 result = 'losses:\n' + str(loss_lst) + '\naccuracies:\n' + str(accuracy_lst)
 print(result)
-result_path = os.path.join('results', 'result2.txt')
+result_path = os.path.join('results', 'log_Densenet121.txt')
 with open(result_path, "w") as output:
     output.write(result)
