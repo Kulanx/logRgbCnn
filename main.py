@@ -10,6 +10,7 @@ from dataset_definitions.fish_log_image_dataset import FishLogImageDataset
 from dataset_definitions.fish_linear_image_dataset import FishLinearImageDataset  
 from dataset_definitions.fish_jpg_image_dataset import FishJPGImageDataset
 import matplotlib.pyplot as plt
+import argparse
 
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
@@ -22,6 +23,16 @@ def load_images_from_folder(folder):
             images.append(img)
     return images
 
+parser = argparse.ArgumentParser(
+                    prog='train',
+                    description='What the program does',
+                    epilog='Text at the bottom of help')
+parser.add_argument('-i', '--input')
+parser.add_argument('-m', '--model')
+parser.add_argument('--lr', type=float, default=0.0005)
+parser.add_argument('-r', '--random', type=bool, default=False)
+args = parser.parse_args()
+
 transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -32,8 +43,23 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-image_root = os.path.join('processed', 'pseudolog')
-dataset = FishLogImageDataset(root_dir=image_root)
+# image_root = os.path.join('processed', 'pseudolog')
+image_type = args.input
+print(f'image type = {image_type}')
+print(f'model = {args.model}')
+dataset = Dataset()
+if args.input == 'log':
+    image_root = os.path.join('processed', 'pseudolog')
+    dataset = FishLogImageDataset(root_dir=image_root)
+elif args.input == 'linear':
+    image_root = os.path.join('processed', 'pseudolinear')
+    dataset = FishLinearImageDataset(root_dir=image_root)
+elif args.input == 'srgb':
+    image_root = os.path.join('processed', 'srgb')
+    dataset = FishJPGImageDataset(root_dir=image_root)
+else:
+    print('image nor recognized')
+    raise Exception(f'--input {args.input} not recognized')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -54,7 +80,16 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # change model here
-net = models.densenet121(pretrained=True)
+net = models.densenet121()
+if args.model.lower() == 'efficientnet':
+    print('using efficient net')
+    # change pretrained to false to initialize random weights
+    net = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_efficientnet_b0', pretrained=True)
+elif args.model.lower() == 'googlenet':
+    print('using google net')
+    net = torch.hub.load('pytorch/vision:v0.10.0', 'googlenet', pretrained=True)
+elif args.model.lower() == 'mobilenetv3':
+    net = models.mobilenet_v3_small(weights='DEFAULT')
 # net = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
 
 # net = CatOrDogNet.CatOrDogNet()
@@ -102,7 +137,7 @@ def evaluate(x, train_losses, test_losses, accuracy=[], title='Evaluate.png', x_
     plt.savefig(title)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(net.parameters(), lr=0.0005)
+optimizer = optim.AdamW(net.parameters(), lr=args.lr)
 # AdamW
 # SGD: default
 
@@ -129,9 +164,9 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         # print statistics
         running_loss += loss.item()
-        if i % print_size == print_size - 1:    # print every 2000 mini-batches
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / print_size:.3f}')
-            running_loss = 0.0
+        # if i % print_size == print_size - 1:    # print every 2000 mini-batches
+        #     print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / print_size:.3f}')
+        #     running_loss = 0.0
 
     net.eval()  # Set the model to evaluation mode
     with torch.no_grad():
@@ -151,8 +186,8 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         if accuracy > max_accuracy:
             max_accuracy = accuracy
             print(f'current max = {max_accuracy}')
-            torch.save(net.state_dict(), 'results/cat_dog_max_model.pth')
-            torch.save(optimizer.state_dict(), 'results/cat_dog_max_optimizer.pth')
+            torch.save(net.state_dict(), f'results/net_{args.model}_{accuracy}_{loss_lst[-1]}.pth')
+            torch.save(optimizer.state_dict(), f'results/opt_{args.model}_{accuracy}_{loss_lst[-1]}.pth')
 
         print(
             f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}, Accuracy: {accuracy * 100:.2f}%')
@@ -161,13 +196,13 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 # torch.save(max_net.state_dict(), 'results/cat_dog_model.pth')
 # torch.save(optimizer.state_dict(), 'results/cat_dog_optimizer.pth')
 
-# plot model here
-x_values = list(range(1, num_epochs + 1))
-evaluate(x_values, loss_lst, accuracy=accuracy_lst)
-
 print('Finished Training')
 result = 'losses:\n' + str(loss_lst) + '\naccuracies:\n' + str(accuracy_lst)
 print(result)
-result_path = os.path.join('results', 'log_Densenet121.txt')
+result_path = os.path.join('results', f'{args.input}_{args.model}.txt')
 with open(result_path, "w") as output:
     output.write(result)
+
+# plot model here
+x_values = list(range(1, num_epochs + 1))
+evaluate(x_values, loss_lst, accuracy=accuracy_lst)
