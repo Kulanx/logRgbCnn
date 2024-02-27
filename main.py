@@ -9,6 +9,7 @@ import os
 from dataset_definitions.fish_log_image_dataset import FishLogImageDataset  
 from dataset_definitions.fish_linear_image_dataset import FishLinearImageDataset  
 from dataset_definitions.fish_jpg_image_dataset import FishJPGImageDataset
+import matplotlib.pyplot as plt
 
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
@@ -47,7 +48,7 @@ train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 # Create DataLoader for training and testing
 batch_size = 32
 print_size = 10
-num_epochs = 25
+num_epochs = 40
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -83,12 +84,32 @@ def test():
         accuracy))
     return accuracy
 
+def evaluate(x, train_losses, test_losses, accuracy=[], title='Evaluate.png', x_label='number of epochs'):
+    fig, ax = plt.subplots(1, 2, figsize=(15, 5))
+    plt.subplots_adjust(bottom=0.1, right=0.8, top=0.9)
+
+    ax[0].plot(x, train_losses, color='blue', label='Train Loss')
+    ax[0].plot(x, test_losses, color='red', label='Test Loss')
+    ax[0].set(xlabel=x_label, 
+            ylabel='negative log likelihood loss',
+            title='Losses')
+    ax[0].legend()
+    
+    ax[1].plot(x, accuracy)
+    ax[1].set(xlabel='number of epochs', ylabel='accuracy', 
+              title='Accuracies')
+
+    plt.savefig(title)
+
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(net.parameters(), lr=0.001)
+optimizer = optim.AdamW(net.parameters(), lr=0.0005)
+# AdamW
+# SGD: default
 
 loss_lst = []
 accuracy_lst = []
-
+max_accuracy = 0
+max_net = models.densenet121(pretrained=True)
 for epoch in range(num_epochs):  # loop over the dataset multiple times
     net.train()
     running_loss = 0.0
@@ -127,8 +148,22 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         accuracy = total_correct / total_samples
         loss_lst.append(loss.item())
         accuracy_lst.append(accuracy)
+        if accuracy > max_accuracy:
+            max_accuracy = accuracy
+            print(f'current max = {max_accuracy}')
+            torch.save(net.state_dict(), 'results/cat_dog_max_model.pth')
+            torch.save(optimizer.state_dict(), 'results/cat_dog_max_optimizer.pth')
+
         print(
             f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}, Accuracy: {accuracy * 100:.2f}%')
+
+# export model here
+# torch.save(max_net.state_dict(), 'results/cat_dog_model.pth')
+# torch.save(optimizer.state_dict(), 'results/cat_dog_optimizer.pth')
+
+# plot model here
+x_values = list(range(1, num_epochs + 1))
+evaluate(x_values, loss_lst, accuracy=accuracy_lst)
 
 print('Finished Training')
 result = 'losses:\n' + str(loss_lst) + '\naccuracies:\n' + str(accuracy_lst)
