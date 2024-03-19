@@ -119,11 +119,10 @@ def test():
         accuracy))
     return accuracy
 
-def evaluate(x, train_losses, test_losses, accuracy=[], title='Evaluate.png', x_label='number of epochs'):
+def evaluate(x, test_losses, accuracy=[], title='Evaluate.png', x_label='number of epochs'):
     fig, ax = plt.subplots(1, 2, figsize=(15, 5))
     plt.subplots_adjust(bottom=0.1, right=0.8, top=0.9)
 
-    ax[0].plot(x, train_losses, color='blue', label='Train Loss')
     ax[0].plot(x, test_losses, color='red', label='Test Loss')
     ax[0].set(xlabel=x_label, 
             ylabel='negative log likelihood loss',

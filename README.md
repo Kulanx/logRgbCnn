@@ -12,3 +12,6 @@ learning rate:
 
 random:
 -r, --random: bool, default=False
+
+/work/SuperResolutionData
+request access to this volume
