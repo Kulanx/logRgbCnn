@@ -65,11 +65,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Calculate the size of the training and testing sets
 total_size = len(dataset)
-train_size = int(0.75 * total_size)
-test_size = total_size - train_size
+train_size = int(0.8 * total_size)
+validation_size = int(0.1 * total_size)
+test_size = total_size - train_size - validation_size
 
 # Create a random split of the dataset
-train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+train_dataset, validation_dataset, test_dataset = random_split(dataset, [train_size, validation_size, test_size])
 
 # Create DataLoader for training and testing
 batch_size = 32
@@ -77,6 +78,7 @@ print_size = 10
 num_epochs = 40
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # change model here
@@ -95,6 +97,7 @@ elif args.model.lower() == 'mobilenetv3':
 # net = CatOrDogNet.CatOrDogNet()
 if torch.cuda.is_available():
     net.cuda()
+    print(torch.cuda.get_device_name(0))
 
 train_losses = []
 train_counter = []
@@ -141,7 +144,8 @@ optimizer = optim.AdamW(net.parameters(), lr=args.lr)
 # SGD: default
 
 loss_lst = []
-accuracy_lst = []
+training_accuracy_lst = []
+validation_accuracy_lst = []
 max_accuracy = 0
 max_net = models.densenet121(pretrained=True)
 for epoch in range(num_epochs):  # loop over the dataset multiple times
@@ -169,9 +173,24 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 
     net.eval()  # Set the model to evaluation mode
     with torch.no_grad():
+        # evaluate the training accuracy
         total_correct = 0
         total_samples = 0
-        for inputs, labels in test_dataloader:
+        for inputs, labels in train_dataloader:
+            inputs, labels = inputs.to(device=device, dtype=torch.float), labels.to(device)
+
+            outputs = net(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total_samples += labels.size(0)
+            total_correct += (predicted == labels).sum().item()
+
+        accuracy = total_correct / total_samples
+        training_accuracy_lst.append(accuracy)
+
+        # evaluate the test accuracy
+        total_correct = 0
+        total_samples = 0
+        for inputs, labels in validation_dataloader:
             inputs, labels = inputs.to(device=device, dtype=torch.float), labels.to(device)
 
             outputs = net(inputs)
@@ -181,7 +200,8 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         accuracy = total_correct / total_samples
         loss_lst.append(loss.item())
-        accuracy_lst.append(accuracy)
+        validation_accuracy_lst.append(accuracy)
+
         if accuracy > max_accuracy:
             max_accuracy = accuracy
             print(f'current max = {max_accuracy}')
@@ -196,7 +216,7 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 # torch.save(optimizer.state_dict(), 'results/cat_dog_optimizer.pth')
 
 print('Finished Training')
-result = 'losses:\n' + str(loss_lst) + '\naccuracies:\n' + str(accuracy_lst)
+result = 'losses:\n' + str(loss_lst) + '\naccuracies:\n' + str(training_accuracy_lst)
 print(result)
 result_path = os.path.join('results', f'{args.input}_{args.model}.txt')
 with open(result_path, "w") as output:
@@ -204,4 +224,4 @@ with open(result_path, "w") as output:
 
 # plot model here
 x_values = list(range(1, num_epochs + 1))
-evaluate(x_values, loss_lst, accuracy=accuracy_lst)
+evaluate(x_values, loss_lst, accuracy=training_accuracy_lst)
